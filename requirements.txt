@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+passlib[bcrypt]
+pyjwt
+pydantic[email]
+python-multipart
