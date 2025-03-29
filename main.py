@@ -10,6 +10,8 @@ from auth import (
     create_access_token,
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES,
+    create_password_reset_token,
+    verify_password_reset_token,
 )
 
 app = FastAPI()
@@ -60,3 +62,38 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @app.get("/protected")
 def protected_route(username: str = Depends(get_current_user)):
     return {"message": f"Welcome, {username}. You have access to this protected route!"}
+
+
+@app.post("/forgot-password")
+def forgot_password(forgot_data: ForgotPassword):
+    # Find user with the given email
+    user = next((u for u in fake_db.values() if u.email == forgot_data.email), None)
+    if not user:
+        # For security reasons, don't reveal if the email exists or not
+        return {"message": "If the email exists, a password reset token will be sent"}
+    
+    # Generate password reset token
+    reset_token = create_password_reset_token(forgot_data.email)
+    
+    # In a real application, send this token via email
+    # For demo purposes, we'll return it directly
+    return {
+        "message": "Password reset token generated",
+        "token": reset_token  # In production, this would be sent via email instead
+    }
+
+@app.post("/reset-password")
+def reset_password(reset_data: ResetPassword):
+    # Verify the reset token and get the email
+    email = verify_password_reset_token(reset_data.token)
+    
+    # Find user with the email
+    user = next((u for u in fake_db.values() if u.email == email), None)
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found")
+    
+    # Update the password
+    user.hashed_password = get_password_hash(reset_data.new_password)
+    fake_db[user.username] = user
+    
+    return {"message": "Password has been reset successfully"}
